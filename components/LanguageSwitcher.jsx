@@ -43,7 +43,7 @@ const LanguageSwitcher = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center cursor-pointer space-x-2 px-4 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg hover:bg-white/20 transition-all duration-200 text-black/80"
+        className="flex items-center cursor-pointer space-x-2 px-4 py-2 bg-black/1 backdrop-blur-sm border border-black/10 rounded-lg hover:bg-white/20 transition-all duration-200 text-black/80"
       >
         <span className="text-sm font-medium">
           {currentLanguage.flag} {currentLanguage.name}
