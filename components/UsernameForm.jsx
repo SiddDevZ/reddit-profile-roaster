@@ -3,11 +3,169 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ConfettiButton } from "@/components/magicui/confetti";
+import { toast } from 'sonner';
 
 export default function UsernameForm({ onSubmitComplete }) {
   const { t } = useTranslation();
   const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const scrapeWithJSONP = async (username, maxComments = 250) => {
+    return new Promise((resolve, reject) => {
+      const comments = [];
+      let after = null;
+      let currentAttempts = 0;
+      const maxAttempts = 25;
+
+      const fetchData = () => {
+        if (currentAttempts >= maxAttempts || comments.length >= maxComments) {
+          resolve(comments);
+          return;
+        }
+
+        currentAttempts++;
+
+        const callbackName = `reddit_callback_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        const script = document.createElement('script');
+
+        let url = `https://old.reddit.com/user/${username}/comments/.json?jsonp=${callbackName}&limit=100`;
+        if (after) {
+          url += `&after=${after}`;
+        }
+
+        const cleanup = () => {
+          if (script.parentNode) {
+            document.head.removeChild(script);
+          }
+          if (window[callbackName]) {
+            delete window[callbackName];
+          }
+        };
+
+        const timeoutId = setTimeout(() => {
+          cleanup();
+          console.log('Request timed out, trying next page...');
+          setTimeout(fetchData, 1000);
+        }, 10000);
+
+        window[callbackName] = (data) => {
+          clearTimeout(timeoutId);
+          
+          try {
+            if (!data || !data.data || !data.data.children || !Array.isArray(data.data.children)) {
+              console.log('Invalid response structure - user not found');
+              reject(new Error('User not found'));
+              return;
+            }
+
+            const children = data.data.children;
+
+            if (children.length === 0) {
+              console.log('No comments found');
+              if (currentAttempts === 1 && comments.length === 0) {
+                reject(new Error('User not found'));
+                return;
+              }
+              resolve(comments);
+              return;
+            }
+
+            let newCommentsCount = 0;
+            for (const item of children) {
+              const commentData = item.data;
+              if (commentData.body && 
+                  commentData.body !== '[deleted]' && 
+                  commentData.body !== '[removed]' &&
+                  commentData.body.trim() !== '') {
+
+                const isDuplicate = comments.some(c => c.body === commentData.body);
+                if (!isDuplicate) {
+                  let extractedPath = '';
+                  try {
+                    const permalink = `https://reddit.com${commentData.permalink}`;
+                    const match = permalink.match(/\/r\/([^\/]+\/comments\/[^\/]+\/[^\/]+)\//);
+                    extractedPath = match ? match[1] : commentData.permalink;
+                  } catch (error) {
+                    extractedPath = commentData.permalink;
+                  }
+
+                  comments.push({
+                    body: commentData.body,
+                    upvotes: commentData.score,
+                    permalink: extractedPath,
+                  });
+                  newCommentsCount++;
+                }
+
+                if (comments.length >= maxComments) {
+                  resolve(comments);
+                  return;
+                }
+              }
+            }
+
+            const newAfter = data?.data?.after;
+            
+            if (!newAfter || newAfter === after) {
+              console.log('No more pages available');
+              resolve(comments);
+              return;
+            }
+
+            after = newAfter;
+
+            if (newCommentsCount > 0) {
+              console.log(`Fetched ${newCommentsCount} new comments, total: ${comments.length}`);
+              setTimeout(fetchData, 500); // Rate limiting
+            } else {
+              console.log('No new comments found, stopping');
+              resolve(comments);
+            }
+
+          } catch (error) {
+            console.error('JSONP parsing error:', error);
+            reject(new Error('User not found'));
+          } finally {
+            cleanup();
+          }
+        };
+
+        script.onerror = () => {
+          clearTimeout(timeoutId);
+          cleanup();
+          console.error('Script loading failed');
+          reject(new Error('User not found'));
+        };
+
+        script.src = url;
+        document.head.appendChild(script);
+      };
+
+      fetchData();
+    });
+  };
+
+  const sendToAPI = async (comments) => {
+    try {
+      const response = await fetch('http://localhost:3003/api/response', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ comments }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error('API request error:', error);
+      throw error;
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,16 +173,39 @@ export default function UsernameForm({ onSubmitComplete }) {
       setIsLoading(true);
       
       try {
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        console.log('Roasting user:', username);
+        const comments = await scrapeWithJSONP(username, 250);
         
-        // Trigger the slide animation
+        if (comments.length === 0) {
+          toast.error('No comments found for this user');
+          return;
+        }
+
         onSubmitComplete?.();
+
+        setTimeout(async () => {
+          try {
+            const apiResponse = await sendToAPI(comments);
+
+            localStorage.setItem('roastData', JSON.stringify(apiResponse));
+
+            window.dispatchEvent(new CustomEvent('roastComplete'));
+            
+          } catch (error) {
+            console.error('API Error:', error);
+            window.dispatchEvent(new CustomEvent('roastError'));
+          }
+        }, 100);
         
-        // Reset form after successful submission
         setUsername('');
+        
       } catch (error) {
-        console.error('Error roasting user:', error);
+        console.error('Error during process:', error);
+        
+        if (error.message.includes('API request failed')) {
+          toast.error('Failed to send data to API. Please contact admin.');
+        } else {
+          toast.error('User not found. Please try again with a different username.');
+        }
       } finally {
         setIsLoading(false);
       }

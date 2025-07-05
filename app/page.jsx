@@ -8,17 +8,47 @@ import { Particles } from "@/components/magicui/particles";
 import Footer from "@/components/Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import ClientLayout from "@/components/ClientLayout";
+import { Toaster, toast } from "sonner";
 
 function PageContent() {
   const { t } = useTranslation();
   const [isSliding, setIsSliding] = useState(false);
   const [showLoadingPage, setShowLoadingPage] = useState(false);
+  const [shouldRedirect, setShouldRedirect] = useState(false);
+  const [hasApiError, setHasApiError] = useState(false);
 
   const [loadingStep, setLoadingStep] = useState(0);
   const [trainingCount, setTrainingCount] = useState(0);
   const [finalizationProgress, setFinalizationProgress] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isTrainingComplete, setIsTrainingComplete] = useState(false);
+  const [isStuck, setIsStuck] = useState(false);
+
+  useEffect(() => {
+    const handleRoastComplete = () => {
+      setShouldRedirect(true);
+    };
+
+    const handleRoastError = () => {
+      setHasApiError(true);
+    };
+
+    window.addEventListener('roastComplete', handleRoastComplete);
+    window.addEventListener('roastError', handleRoastError);
+
+    return () => {
+      window.removeEventListener('roastComplete', handleRoastComplete);
+      window.removeEventListener('roastError', handleRoastError);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (shouldRedirect && finalizationProgress >= 100) {
+      setTimeout(() => {
+        window.location.href = '/roast';
+      }, 1000);
+    }
+  }, [shouldRedirect, finalizationProgress]);
 
   const handleFormSubmit = () => {
     setIsSliding(true);
@@ -29,6 +59,9 @@ function PageContent() {
   };
 
   const startLoadingSequence = () => {
+    const totalDuration = 27000;
+    const startTime = Date.now();
+
     setTimeout(() => {
       setIsInitialized(true);
       setLoadingStep(1);
@@ -38,13 +71,13 @@ function PageContent() {
 
   const startTraining = () => {
     const targetCount = 79032;
-    const duration = 8000;
+    const duration = 12000;
     const startTime = Date.now();
     
     const updateCount = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
-
+      
       const currentCount = Math.floor(targetCount * progress);
       
       setTrainingCount(currentCount);
@@ -65,25 +98,71 @@ function PageContent() {
   };
 
   const startFinalization = () => {
-    const duration = 3000;
+    const duration = 12000;
     const startTime = Date.now();
+    let speedMultiplier = 1;
+    let lastShouldRedirect = false;
+
+    const isResponseReceived = () => {
+      return localStorage.getItem('roastData') !== null;
+    };
     
     const updateProgress = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
+      const responseReceived = isResponseReceived() || shouldRedirect;
+
+      if (responseReceived && !lastShouldRedirect) {
+        speedMultiplier = 5; // Make it extremely fast (5x)
+        lastShouldRedirect = true;
+      }
       
+      const elapsed = Date.now() - startTime;
+      const adjustedElapsed = elapsed * speedMultiplier;
+      let progress = Math.min(adjustedElapsed / duration, 1);
+      
+      if (responseReceived && progress > 0.5 && progress < 0.9) {
+        progress = 0.9;
+      }
+
       setFinalizationProgress(Math.floor(progress * 100));
       
+      if (progress >= 1) {
+        if (!responseReceived && !hasApiError) {
+          setIsStuck(true);
+          return;
+        }
+        return;
+      }
+      
       if (progress < 1) {
-        setTimeout(updateProgress, 50);
+        const updateInterval = speedMultiplier > 1 ? 5 : 50; 
+        setTimeout(updateProgress, updateInterval);
       }
     };
     
     updateProgress();
   };
 
+  useEffect(() => {
+    if (hasApiError) {
+      toast.error('Failed to generate roast. Please try again.');
+      setTimeout(() => {
+        setShowLoadingPage(false);
+        setIsSliding(false);
+        setLoadingStep(0);
+        setTrainingCount(0);
+        setFinalizationProgress(0);
+        setIsInitialized(false);
+        setIsTrainingComplete(false);
+        setIsStuck(false);
+        setHasApiError(false);
+        setShouldRedirect(false);
+      }, 2000);
+    }
+  }, [hasApiError]);
+
   return (
     <div className="relative min-h-screen overflow-hidden">
+      <Toaster theme="light" position="bottom-right" richColors />
       <div className="fixed top-4 sm:block hidden left-4 z-50">
         <LanguageSwitcher />
       </div>
