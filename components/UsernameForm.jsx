@@ -145,22 +145,89 @@ export default function UsernameForm({ onSubmitComplete }) {
     });
   };
 
-  const sendToAPI = async (comments) => {
+  const fetchUserProfile = async (username) => {
+    return new Promise((resolve, reject) => {
+      const callbackName = `reddit_profile_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const script = document.createElement('script');
+
+      const cleanup = () => {
+        if (script.parentNode) {
+          document.head.removeChild(script);
+        }
+        if (window[callbackName]) {
+          delete window[callbackName];
+        }
+      };
+
+      const timeoutId = setTimeout(() => {
+        cleanup();
+        console.log('Profile fetch timed out');
+        resolve({ name: null, avatar: null });
+      }, 5000);
+
+      window[callbackName] = (data) => {
+        clearTimeout(timeoutId);
+        
+        try {
+          if (data?.data?.subreddit) {
+            const profile = data.data.subreddit;
+            let avatar = profile.icon_img || profile.community_icon || null;
+            
+            // Check if avatar is from i.redd.it domain, otherwise use default
+            if (avatar && !avatar.includes('i.redd.it')) {
+              avatar = 'https://www.redditstatic.com/avatars/avatar_default_01_FF4500.png';
+            }
+            
+            resolve({
+              name: profile.display_name_prefixed || profile.display_name || null,
+              avatar: avatar
+            });
+          } else {
+            resolve({ name: null, avatar: null });
+          }
+        } catch (error) {
+          console.error('Profile parsing error:', error);
+          resolve({ name: null, avatar: null });
+        } finally {
+          cleanup();
+        }
+      };
+
+      script.onerror = () => {
+        clearTimeout(timeoutId);
+        cleanup();
+        console.error('Profile script loading failed');
+        resolve({ name: null, avatar: null });
+      };
+
+      script.src = `https://old.reddit.com/user/${username}/about.json?jsonp=${callbackName}`;
+      document.head.appendChild(script);
+    });
+  };
+
+  const sendToAPI = async (comments, userProfile) => {
     try {
-      const response = await fetch('http://localhost:3003/api/response', {
+      const response = await fetch('http://localhost:3003/api/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ comments }),
+        body: JSON.stringify({ 
+          comments,
+          username: userProfile.username,
+          name: userProfile.name,
+          avatar: userProfile.avatar,
+        }),
       });
 
       if (!response.ok) {
-        throw new Error(`API request failed with status ${response.status}`);
+        // If the response is not OK, try to parse the error message from the body
+        const errorData = await response.json().catch(() => null); // Gracefully handle non-JSON responses
+        const errorMessage = errorData?.message || `API request failed with status ${response.status}`;
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json();
-      return data;
+      return await response.json();
     } catch (error) {
       console.error('API request error:', error);
       throw error;
@@ -173,40 +240,40 @@ export default function UsernameForm({ onSubmitComplete }) {
       setIsLoading(true);
       
       try {
-        const comments = await scrapeWithJSONP(username, 250);
+        const [comments, userProfile] = await Promise.all([
+          scrapeWithJSONP(username, 250),
+          fetchUserProfile(username)
+        ]);
         
         if (comments.length === 0) {
           toast.error('No comments found for this user');
+          setIsLoading(false); // Reset loading state
           return;
         }
 
         onSubmitComplete?.();
 
-        setTimeout(async () => {
-          try {
-            const apiResponse = await sendToAPI(comments);
-
-            localStorage.setItem('roastData', JSON.stringify(apiResponse));
-
-            window.dispatchEvent(new CustomEvent('roastComplete'));
-            
-          } catch (error) {
-            console.error('API Error:', error);
-            window.dispatchEvent(new CustomEvent('roastError'));
-          }
-        }, 100);
+        const profileData = {
+          username: username,
+          name: userProfile.name,
+          avatar: userProfile.avatar
+        };
         
-        setUsername('');
+        // Send to API and wait for the response
+        const apiResponse = await sendToAPI(comments, profileData);
+
+        if (apiResponse.success) {
+          // Redirect on success
+          window.location.href = `/roast?user=${encodeURIComponent(username)}`;
+        } else {
+          // Handle API-level errors (e.g., validation)
+          toast.error(apiResponse.message || 'An unknown error occurred.');
+          setIsLoading(false);
+        }
         
       } catch (error) {
         console.error('Error during process:', error);
-        
-        if (error.message.includes('API request failed')) {
-          toast.error('Failed to send data to API. Please contact admin.');
-        } else {
-          toast.error('User not found. Please try again with a different username.');
-        }
-      } finally {
+        toast.error(error.message || 'An unknown error occurred. Please try again.');
         setIsLoading(false);
       }
     }

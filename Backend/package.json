@@ -1,0 +1,21 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "nodemon server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@hono/node-server": "^1.15.0",
+    "dotenv": "^17.0.1",
+    "hono": "^4.8.4",
+    "hono-rate-limiter": "^0.4.2",
+    "mongoose": "^8.16.1",
+    "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1"
+  }
+}

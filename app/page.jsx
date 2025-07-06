@@ -102,6 +102,8 @@ function PageContent() {
     const startTime = Date.now();
     let speedMultiplier = 1;
     let lastShouldRedirect = false;
+    let isFinishing = false;
+    let finishStartTime = 0;
 
     const isResponseReceived = () => {
       return localStorage.getItem('roastData') !== null;
@@ -111,16 +113,27 @@ function PageContent() {
       const responseReceived = isResponseReceived() || shouldRedirect;
 
       if (responseReceived && !lastShouldRedirect) {
-        speedMultiplier = 5; // Make it extremely fast (5x)
         lastShouldRedirect = true;
+        isFinishing = true;
+        finishStartTime = Date.now();
       }
       
-      const elapsed = Date.now() - startTime;
-      const adjustedElapsed = elapsed * speedMultiplier;
-      let progress = Math.min(adjustedElapsed / duration, 1);
+      let progress;
       
-      if (responseReceived && progress > 0.5 && progress < 0.9) {
-        progress = 0.9;
+      if (isFinishing) {
+        const finishElapsed = Date.now() - finishStartTime;
+        const finishDuration = 800;
+
+        const currentProgress = finalizationProgress / 100;
+
+        const t = Math.min(finishElapsed / finishDuration, 1);
+        const easeOutQuad = t * (2 - t); // Ease out quadratic formula
+
+        progress = currentProgress + (1 - currentProgress) * easeOutQuad;
+      } else {
+        const elapsed = Date.now() - startTime;
+        const adjustedElapsed = elapsed * speedMultiplier;
+        progress = Math.min(adjustedElapsed / duration, 1);
       }
 
       setFinalizationProgress(Math.floor(progress * 100));
@@ -134,7 +147,7 @@ function PageContent() {
       }
       
       if (progress < 1) {
-        const updateInterval = speedMultiplier > 1 ? 5 : 50; 
+        const updateInterval = isFinishing ? 16 : (speedMultiplier > 1 ? 20 : 50);
         setTimeout(updateProgress, updateInterval);
       }
     };
