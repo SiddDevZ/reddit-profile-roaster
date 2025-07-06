@@ -207,7 +207,7 @@ export default function UsernameForm({ onSubmitComplete }) {
 
   const sendToAPI = async (comments, userProfile) => {
     try {
-      const response = await fetch('http://localhost:3003/api/responses', {
+      const response = await fetch('https://api.goonchan.org/reddit/api/responses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

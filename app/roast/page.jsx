@@ -69,7 +69,7 @@ export default function RoastPage() {
       }
 
       try {
-        const response = await fetch(`http://localhost:3003/api/roast/${encodeURIComponent(username)}`);
+        const response = await fetch(`https://api.goonchan.org/reddit/api/roast/${encodeURIComponent(username)}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -228,7 +228,7 @@ export default function RoastPage() {
       const urlParams = new URLSearchParams(window.location.search);
       const username = urlParams.get('user');
       try {
-        await fetch(`http://localhost:3003/api/roast/${encodeURIComponent(username)}/seen`, { method: 'POST' });
+        await fetch(`https://api.goonchan.org/reddit/api/roast/${encodeURIComponent(username)}/seen`, { method: 'POST' });
       } catch (err) {
         console.error("Failed to mark questions as seen:", err);
       }

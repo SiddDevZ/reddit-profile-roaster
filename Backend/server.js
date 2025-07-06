@@ -41,4 +41,4 @@ serve({
   port,
 });
 
-console.log(`Server running at http://localhost:${port}`);
+console.log(`Server running at https://api.goonchan.org/reddit:${port}`);
