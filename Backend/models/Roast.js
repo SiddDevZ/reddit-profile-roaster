@@ -21,9 +21,6 @@ const roastSchema = new mongoose.Schema(
   }
 );
 
-// Index for faster username searches
-roastSchema.index({ username: 1 });
-
 const Roast = mongoose.model("Roast", roastSchema);
 
 export default Roast;

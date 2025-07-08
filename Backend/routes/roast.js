@@ -3,18 +3,17 @@ import Roast from '../models/Roast.js'
 
 const router = new Hono()
 
-// This route is now the primary way to get roast data.
-// It checks if the interactive questions have been seen yet.
 router.get('/:username', async (c) => {
   const { username } = c.req.param()
   try {
-    const roast = await Roast.findOne({ username })
+    const roast = await Roast.findOne({
+      username: { $regex: new RegExp(`^${username}$`, 'i') },
+    })
 
     if (!roast) {
       return c.json({ success: false, message: 'Roast not found' }, 404)
     }
 
-    // If questions exist but haven't been seen, send them for the chat.
     if (roast.questions && !roast.questionsSeen) {
       return c.json({
         success: true,
@@ -27,7 +26,6 @@ router.get('/:username', async (c) => {
       })
     }
 
-    // If questions have been seen (or don't exist), return the full summaries.
     return c.json({
       success: true,
       type: 'summaries',
@@ -50,13 +48,11 @@ router.get('/:username', async (c) => {
   }
 })
 
-// This route specifically marks the questions as seen and returns them.
-// The frontend will call this before starting the chat sequence.
 router.post('/:username/seen', async (c) => {
   const { username } = c.req.param()
   try {
     const roast = await Roast.findOneAndUpdate(
-      { username },
+      { username: { $regex: new RegExp(`^${username}$`, 'i') } },
       { questionsSeen: true },
       { new: true }
     )

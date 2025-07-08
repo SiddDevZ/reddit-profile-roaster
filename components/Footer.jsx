@@ -38,13 +38,21 @@ export default function Footer() {
   }, []);
 
   return (
-    <div className="absolute bottom-4 left-4 right-4">
+    <div className="absolute bottom-4 left-4 mb-3 sm:mb-0 right-4">
       <div className="hidden sm:flex justify-between items-center">
         <div className="bg-[#202020]  text-white text-sm font-mono px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center space-x-2">
             <span className="text-base">{emojis[emojiIndex]}</span>
             <span className="text-xs tracking-wider font-medium">
-              2025 | A PROJECT BY SIDDHARTH
+              2025 | A PROJECT BY{' '}
+              <a 
+                href="https://siddz.com" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className=" transition-colors hover:text-blue-300 duration-200 cursor-pointer underline underline-offset-3"
+              >
+                SIDDHARTH
+              </a>
             </span>
           </div>
         </div>
@@ -59,11 +67,19 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="sm:hidden flex border-t border-[#9c9c9c] pt-3 flex-col items-center space-y-2 text-center">
+      <div className="sm:hidden flex border-t border-[#ffffff] flex-col items-center space-y-2 text-center">
         <div className="flex items-center space-x-2">
           <span className="text-base">{emojis[emojiIndex]}</span>
           <span className="text-xs text-black/80 font-mono tracking-wider font-semibold">
-            2025 | A PROJECT BY SIDDHARTH
+            2025 | A PROJECT BY{' '}
+            <a 
+              href="https://siddz.com" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-500 transition-colors duration-200 cursor-pointer underline decoration-dotted underline-offset-2"
+            >
+              SIDDHARTH
+            </a>
           </span>
         </div>
         <div className="flex items-center space-x-2">

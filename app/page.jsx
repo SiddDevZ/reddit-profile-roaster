@@ -31,6 +31,15 @@ function PageContent() {
 
     const handleRoastError = () => {
       setHasApiError(true);
+
+      setShowLoadingPage(false);
+      setIsSliding(false);
+      setLoadingStep(0);
+      setTrainingCount(0);
+      setFinalizationProgress(0);
+      setIsInitialized(false);
+      setIsTrainingComplete(false);
+      setIsStuck(false);
     };
 
     window.addEventListener('roastComplete', handleRoastComplete);
@@ -157,7 +166,7 @@ function PageContent() {
 
   useEffect(() => {
     if (hasApiError) {
-      toast.error('Failed to generate roast. Please try again.');
+      // toast.error('Failed to generate roast. Please try again.');
       setTimeout(() => {
         setShowLoadingPage(false);
         setIsSliding(false);
@@ -169,7 +178,7 @@ function PageContent() {
         setIsStuck(false);
         setHasApiError(false);
         setShouldRedirect(false);
-      }, 2000);
+      }, 4000);
     }
   }, [hasApiError]);
 
@@ -201,7 +210,7 @@ function PageContent() {
             </div>
           </div>
 
-          <div className="max-w-2xl w-full text-center">
+          <div className="max-w-2xl mb-24 mt-10 sm:mb-0 sm:mt-0 w-full text-center">
             <h1 className="font-merri text-[2.6rem] unselectable sm:text-6xl md:text-7xl lg:text-7xl font-light tracking-tight text-black mb-4 sm:mb-5 leading-[1.09]">
               {t("title")}
             </h1>

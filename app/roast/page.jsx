@@ -1,15 +1,14 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import config from '../../config.json';
+import Footer from '@/components/Footer';
 
-// Helper function to parse potentially malformed JSON
 const parseQuestions = (rawQuestions) => {
   try {
-    // First, try to parse it as-is
     return JSON.parse(rawQuestions);
   } catch (e) {
-    console.log("Could not parse questions as-is, attempting to extract from string.");
-    // If that fails, it might be a string containing a JSON array
+
     const jsonMatch = rawQuestions.match(/\[[\s\S]*\]/);
     if (jsonMatch) {
       try {
@@ -69,7 +68,7 @@ export default function RoastPage() {
       }
 
       try {
-        const response = await fetch(`https://api.goonchan.org/reddit/api/roast/${encodeURIComponent(username)}`);
+        const response = await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}`);
         const data = await response.json();
 
         if (!data.success) {
@@ -224,11 +223,10 @@ export default function RoastPage() {
       setShowButtons(true);
     } else {
       setIsComplete(true);
-      // Mark questions as seen and then reload
       const urlParams = new URLSearchParams(window.location.search);
       const username = urlParams.get('user');
       try {
-        await fetch(`https://api.goonchan.org/reddit/api/roast/${encodeURIComponent(username)}/seen`, { method: 'POST' });
+        await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}/seen`, { method: 'POST' });
       } catch (err) {
         console.error("Failed to mark questions as seen:", err);
       }
@@ -239,17 +237,9 @@ export default function RoastPage() {
     }
   };
 
-  // Loading skeleton component
-  const LoadingSkeleton = ({ className }) => (
-    <div className={`animate-pulse ${className}`}>
-      <div className="bg-gray-200 rounded-lg h-full"></div>
-    </div>
-  );
-
-  // Roast card component
   const RoastCard = ({ title, content, emoji, isLoading, className = "" }) => (
-    <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-sm transition-all duration-300 hover:shadow-md ${className}`}>
-      <div className="flex items-center space-x-3 mb-4">
+    <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-xs transition-all duration-300 ${className}`}>
+      <div className="flex items-center space-x-2.5 mb-3">
         <span className="text-2xl">{emoji}</span>
         <h3 className="font-merri text-xl font-light text-black">{title}</h3>
       </div>
@@ -295,7 +285,6 @@ export default function RoastPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-white to-gray-50 overflow-hidden">
-      {/* Chat Interface - Only show when NOT showing roast results */}
       {!showRoastResults && (
         <div className="relative">
           <div className="min-h-screen p-4">
@@ -320,7 +309,6 @@ export default function RoastPage() {
                         )}
                       </div>
                       
-                      {/* Yes/No buttons positioned where user response goes */}
                       {showButtons && !message.isUser && chatMessages.indexOf(message) === chatMessages.length - 1 && (
                         <div className="flex justify-end mt-4 space-x-3">
                           <button
@@ -350,7 +338,6 @@ export default function RoastPage() {
                 </div>
               )}
 
-              {/* Footer */}
               <div className="text-center opacity-0 mt-24 mb-16">
                 a
               </div>
@@ -359,11 +346,9 @@ export default function RoastPage() {
         </div>
       )}
 
-      {/* Roast Results Page */}
       {showRoastResults && (
         <div className="min-h-screen p-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl mx-auto">
-            {/* Header */}
             <div className="text-center mb-12">
               <h1 className="font-merri text-4xl sm:text-5xl font-light text-black mb-2 tracking-tight">
                 Your Roast
@@ -373,10 +358,9 @@ export default function RoastPage() {
               </p>
             </div>
 
-            {/* User Profile Card */}
             <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm mb-8">
               <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
-                {/* Avatar */}
+
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden">
                   {userData?.avatar ? (
                     <img 
@@ -389,15 +373,13 @@ export default function RoastPage() {
                   )}
                 </div>
 
-                {/* User Info */}
                 <div className="text-center sm:text-left flex-1">
                   <h2 className="font-merri text-2xl sm:text-3xl font-light text-black mb-2">
                     {userData?.username ? `u/${userData.username}` : (
                       <div className="h-8 bg-gray-200 rounded animate-pulse w-32 mx-auto sm:mx-0"></div>
                     )}
                   </h2>
-                  
-                  {/* Subreddits */}
+
                   <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
                     {userData?.subreddits ? userData.subreddits.map((sub, index) => (
                       <span 
@@ -407,7 +389,6 @@ export default function RoastPage() {
                         r/{sub.name} ({sub.percentage}%)
                       </span>
                     )) : (
-                      // Loading skeleton for subreddits
                       Array.from({ length: 4 }).map((_, i) => (
                         <div key={i} className="h-6 bg-gray-200 rounded-full animate-pulse w-20"></div>
                       ))
@@ -417,62 +398,64 @@ export default function RoastPage() {
               </div>
             </div>
 
-            {/* Main Roast - Full Width */}
             <div className="mb-6">
               <RoastCard
                 title="Roast"
                 content={aiSummaries.detailedRoast}
                 emoji="🔥"
                 isLoading={!aiSummariesComplete.detailedRoast}
-                className="min-h-[200px]"
               />
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              <RoastCard
-                title="Strengths"
-                content={aiSummaries.strengthAnalysis}
-                emoji="💪"
-                isLoading={!aiSummariesComplete.strengthAnalysis}
-                className="min-h-[180px]"
-              />
+            <div className="columns-1 lg:columns-2 gap-6 space-y-6">
+              <div className="break-inside-avoid mb-6">
+                <RoastCard
+                  title="Strengths"
+                  content={aiSummaries.strengthAnalysis}
+                  emoji="💪"
+                  isLoading={!aiSummariesComplete.strengthAnalysis}
+                />
+              </div>
 
-              <RoastCard
-                title="Weaknesses"
-                content={aiSummaries.weaknessAnalysis}
-                emoji="🌙"
-                isLoading={!aiSummariesComplete.weaknessAnalysis}
-                className="min-h-[180px]"
-              />
+              <div className="break-inside-avoid mb-6">
+                <RoastCard
+                  title="Weaknesses"
+                  content={aiSummaries.weaknessAnalysis}
+                  emoji="🌙"
+                  isLoading={!aiSummariesComplete.weaknessAnalysis}
+                />
+              </div>
+
+              <div className="break-inside-avoid mb-6">
+                <RoastCard
+                  title="Love Life"
+                  content={aiSummaries.loveLifeAnalysis}
+                  emoji="🦋"
+                  isLoading={!aiSummariesComplete.loveLifeAnalysis}
+                />
+              </div>
+
+              <div className="break-inside-avoid mb-6">
+                <RoastCard
+                  title="Life Purpose"
+                  content={aiSummaries.lifePurposeAnalysis}
+                  emoji="🐺"
+                  isLoading={!aiSummariesComplete.lifePurposeAnalysis}
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <RoastCard
-                title="Love Life"
-                content={aiSummaries.loveLifeAnalysis}
-                emoji="🦋"
-                isLoading={!aiSummariesComplete.loveLifeAnalysis}
-                className="min-h-[180px]"
-              />
-
-              <RoastCard
-                title="Life Purpose"
-                content={aiSummaries.lifePurposeAnalysis}
-                emoji="🐺"
-                isLoading={!aiSummariesComplete.lifePurposeAnalysis}
-                className="min-h-[180px]"
-              />
-            </div>
-
-            {/* Footer */}
-            <div className="text-center mt-16 mb-8">
+            <div className="text-center opacity-0 mb-8">
               <button 
                 onClick={() => window.location.href = '/'}
-                className="bg-black text-white px-8 py-3 rounded-2xl font-pop font-medium cursor-pointer transition-all duration-300 hover:bg-gray-800"
+                className="bg-black text-white px-8 py-3 rounded-2xl font-pop font-medium cursor-pointer transition-all duration-300"
               >
                 Roast Another Profile
               </button>
             </div>
+          </div>
+          <div className='opacity-[97.5%]'>
+            <Footer />
           </div>
         </div>
       )}

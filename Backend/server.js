@@ -32,7 +32,6 @@ const port = process.env.PORT || 3003;
 
 app.get('/', (c) => c.text('Hello World!'));
 
-// Use the new, simplified routes
 app.route('/api/responses', responseRouter);
 app.route('/api/roast', roastRouter);
 
@@ -41,4 +40,4 @@ serve({
   port,
 });
 
-console.log(`Server running at https://api.goonchan.org/reddit:${port}`);
+console.log(`Server running at https://localhost:${port}`);
