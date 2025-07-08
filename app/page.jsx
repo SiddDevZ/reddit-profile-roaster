@@ -42,12 +42,27 @@ function PageContent() {
       setIsStuck(false);
     };
 
+    const handleResetHomepage = () => {
+      setIsSliding(false);
+      setShowLoadingPage(false);
+      setShouldRedirect(false);
+      setHasApiError(false);
+      setLoadingStep(0);
+      setTrainingCount(0);
+      setFinalizationProgress(0);
+      setIsInitialized(false);
+      setIsTrainingComplete(false);
+      setIsStuck(false);
+    };
+
     window.addEventListener('roastComplete', handleRoastComplete);
     window.addEventListener('roastError', handleRoastError);
+    window.addEventListener('resetHomepage', handleResetHomepage);
 
     return () => {
       window.removeEventListener('roastComplete', handleRoastComplete);
       window.removeEventListener('roastError', handleRoastError);
+      window.removeEventListener('resetHomepage', handleResetHomepage);
     };
   }, []);
 
@@ -68,14 +83,11 @@ function PageContent() {
   };
 
   const startLoadingSequence = () => {
-    const totalDuration = 27000;
-    const startTime = Date.now();
-
     setTimeout(() => {
       setIsInitialized(true);
       setLoadingStep(1);
       startTraining();
-    }, 2000);
+    }, 2300);
   };
 
   const startTraining = () => {
@@ -99,7 +111,7 @@ function PageContent() {
         setTimeout(() => {
           setLoadingStep(2);
           startFinalization();
-        }, 1000);
+        }, 1300);
       }
     };
     
@@ -107,12 +119,13 @@ function PageContent() {
   };
 
   const startFinalization = () => {
-    const duration = 12000;
+    const duration = 15600; // 30% slower (12000 * 1.3)
     const startTime = Date.now();
     let speedMultiplier = 1;
     let lastShouldRedirect = false;
     let isFinishing = false;
     let finishStartTime = 0;
+    let isStuckAt90 = false;
 
     const isResponseReceived = () => {
       return localStorage.getItem('roastData') !== null;
@@ -131,7 +144,7 @@ function PageContent() {
       
       if (isFinishing) {
         const finishElapsed = Date.now() - finishStartTime;
-        const finishDuration = 800;
+        const finishDuration = 1040;
 
         const currentProgress = finalizationProgress / 100;
 
@@ -141,8 +154,24 @@ function PageContent() {
         progress = currentProgress + (1 - currentProgress) * easeOutQuad;
       } else {
         const elapsed = Date.now() - startTime;
-        const adjustedElapsed = elapsed * speedMultiplier;
+        let adjustedElapsed = elapsed * speedMultiplier;
         progress = Math.min(adjustedElapsed / duration, 1);
+
+        if (progress >= 0.5 && !responseReceived) {
+          if (progress < 0.9) {
+            const slowZoneStart = 0.5;
+            const slowZoneEnd = 0.9;
+            const slowZoneProgress = (progress - slowZoneStart) / (slowZoneEnd - slowZoneStart);
+
+            const slowMultiplier = 0.3;
+            const adjustedSlowProgress = slowZoneProgress * slowMultiplier;
+            progress = slowZoneStart + adjustedSlowProgress * (slowZoneEnd - slowZoneStart);
+          } else if (progress >= 0.9 && !isStuckAt90) {
+            progress = 0.9;
+            isStuckAt90 = true;
+            setIsStuck(true);
+          }
+        }
       }
 
       setFinalizationProgress(Math.floor(progress * 100));
@@ -155,7 +184,7 @@ function PageContent() {
         return;
       }
       
-      if (progress < 1) {
+      if (progress < 1 && !(isStuckAt90 && !responseReceived)) {
         const updateInterval = isFinishing ? 16 : (speedMultiplier > 1 ? 20 : 50);
         setTimeout(updateProgress, updateInterval);
       }
@@ -311,8 +340,8 @@ function PageContent() {
 
               <div className={`text-left group transition-all duration-700 ease-out ${
                 loadingStep >= 2 
-                  ? "opacity-100 translate-y-0" 
-                  : "opacity-0 translate-y-4"
+                  ? "opacity-100" 
+                  : "opacity-0"
               }`}>
                 <div className="flex items-center space-x-3">
                   <div className={`w-2 h-2 rounded-full transition-all duration-500 ${

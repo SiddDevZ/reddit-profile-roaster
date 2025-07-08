@@ -54,11 +54,19 @@ export default function UsernameForm({ onSubmitComplete }) {
         const apiResponse = await sendToAPI(username.trim());
 
         if (apiResponse.success) {
-          if (apiResponse.redirect) {
-            window.location.href = `/roast?user=${encodeURIComponent(apiResponse.username)}`;
-          } else {
-            window.location.href = `/roast?user=${encodeURIComponent(username.trim())}`;
-          }
+          setTimeout(() => {
+            if (apiResponse.redirect) {
+              window.location.href = `/roast?user=${encodeURIComponent(apiResponse.username)}`;
+            } else {
+              window.location.href = `/roast?user=${encodeURIComponent(username.trim())}`;
+            }
+          }, 100);
+
+          setTimeout(() => {
+            setUsername('');
+            setIsLoading(false);
+            window.dispatchEvent(new CustomEvent('resetHomepage'));
+          }, 1000);
         } else {
           toast.error(apiResponse.message || 'An unknown error occurred.');
           setIsLoading(false);
@@ -75,7 +83,6 @@ export default function UsernameForm({ onSubmitComplete }) {
         }
         
         setIsLoading(false);
-        
         window.dispatchEvent(new CustomEvent('roastError'));
       }
     }

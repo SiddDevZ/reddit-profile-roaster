@@ -103,6 +103,7 @@ export default function RoastPage() {
           });
           setShowRoastResults(true);
           setLoading(false);
+          window.scrollTo(0, 0);
         }
 
       } catch (err) {
@@ -127,6 +128,12 @@ export default function RoastPage() {
       scrollToBottom();
     }
   }, [chatMessages]);
+
+  useEffect(() => {
+    if (showRoastResults) {
+      window.scrollTo(0, 0);
+    }
+  }, [showRoastResults]);
 
   const typeMessage = (message, isUser = false) => {
     return new Promise((resolve) => {

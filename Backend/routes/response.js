@@ -98,6 +98,7 @@ function extractSubreddits(comments) {
 }
 
 async function generateRoastQuestions(comments, username) {
+  const recentComments = comments.slice(0, 100);
   const roastPrompt = `Based on the Reddit posts and comments below, generate exactly two playful or sarcastic yes/no questions about the user's behavior or interests. Each question should come with a separate response for both "yes" and "no" answers.
 
 Make the questions witty, judgmental, or sarcastic like a roasting friend would ask in genz style but don't overdo it. Focus on their behavior, posting style, subreddit choices, recurring phrases, or obvious patterns in their activity. It should be short like a normal message, Keep it entertaining.
@@ -122,7 +123,7 @@ Example structure (match this format EXACTLY, not even a single character more o
 ]
 
 Here's the Reddit activity to analyze:
-${JSON.stringify(comments)}
+${JSON.stringify(recentComments)}
 
 Generate the JSON response:`
 
