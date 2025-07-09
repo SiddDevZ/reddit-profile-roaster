@@ -118,10 +118,12 @@ export default function RoastPage() {
 
   useEffect(() => {
     const scrollToBottom = () => {
-      window.scrollTo({
-        top: document.documentElement.scrollHeight,
-        behavior: 'smooth'
-      });
+      if (window.innerWidth >= 640) {
+        window.scrollTo({
+          top: document.documentElement.scrollHeight,
+          behavior: 'smooth'
+        });
+      }
     };
     
     if (chatMessages.length > 0) {
