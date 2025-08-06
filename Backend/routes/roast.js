@@ -68,4 +68,22 @@ router.post('/:username/seen', async (c) => {
   }
 })
 
+router.delete('/:username', async (c) => {
+  const { username } = c.req.param()
+  try {
+    const roast = await Roast.findOneAndDelete({
+      username: { $regex: new RegExp(`^${username}$`, 'i') }
+    })
+
+    if (!roast) {
+      return c.json({ success: false, message: 'Roast not found' }, 404)
+    }
+
+    return c.json({ success: true, message: 'Roast deleted successfully.' })
+  } catch (error) {
+    console.error('Error deleting roast:', error)
+    return c.json({ success: false, message: 'Server error' }, 500)
+  }
+})
+
 export default router

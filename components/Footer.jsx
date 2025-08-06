@@ -38,7 +38,7 @@ export default function Footer() {
   }, []);
 
   return (
-    <div className="absolute bottom-4 left-4 mb-3 sm:mb-0 right-4">
+    <div className="absolute bottom-4 left-4 mb-3 sm:mb-3 right-4">
       <div className="hidden sm:flex justify-between items-center">
         <div className="bg-[#202020]  text-white text-sm font-mono px-4 py-2 rounded-lg shadow-lg">
           <div className="flex items-center space-x-2">

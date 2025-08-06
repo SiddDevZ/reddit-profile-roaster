@@ -1,10 +1,8 @@
+import './config.js';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import mongoose from 'mongoose';
-import { config } from 'dotenv';
-
-config();
 
 import responseRouter from './routes/response.js';
 import roastRouter from './routes/roast.js';
@@ -40,4 +38,4 @@ serve({
   port,
 });
 
-console.log(`Server running at https://localhost:${port}`);
+console.log(`Server running at http://localhost:${port}`);

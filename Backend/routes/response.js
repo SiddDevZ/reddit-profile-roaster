@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import { rateLimiter } from 'hono-rate-limiter'
 import Roast from '../models/Roast.js'
+import { fetchRedditComments, fetchUserProfile } from '../services/redditApi.js'
 
 const router = new Hono()
 
@@ -14,15 +15,7 @@ const limiter = rateLimiter({
 
 async function getGeminiResponse(prompt, retryCount = 0, useProModel = false) {
   const API_KEYS = [
-    process.env.GEMINI_API_KEY_1,
-    process.env.GEMINI_API_KEY_2,
-    process.env.GEMINI_API_KEY_3,
-    process.env.GEMINI_API_KEY_4,
-    process.env.GEMINI_API_KEY_5,
-    process.env.GEMINI_API_KEY_6,
-    process.env.GEMINI_API_KEY_7,
-    process.env.GEMINI_API_KEY_8,
-    process.env.GEMINI_API_KEY_9
+    process.env.GEMINI_API_KEY_1, process.env.GEMINI_API_KEY_2, process.env.GEMINI_API_KEY_3, process.env.GEMINI_API_KEY_4, process.env.GEMINI_API_KEY_5, process.env.GEMINI_API_KEY_6, process.env.GEMINI_API_KEY_7, process.env.GEMINI_API_KEY_8, process.env.GEMINI_API_KEY_9, process.env.GEMINI_API_KEY_10, process.env.GEMINI_API_KEY_11, process.env.GEMINI_API_KEY_12, process.env.GEMINI_API_KEY_13, process.env.GEMINI_API_KEY_14, process.env.GEMINI_API_KEY_15, process.env.GEMINI_API_KEY_16, process.env.GEMINI_API_KEY_17, process.env.GEMINI_API_KEY_18, process.env.GEMINI_API_KEY_19, process.env.GEMINI_API_KEY_20, process.env.GEMINI_API_KEY_21, process.env.GEMINI_API_KEY_22, process.env.GEMINI_API_KEY_23, process.env.GEMINI_API_KEY_24, process.env.GEMINI_API_KEY_25, process.env.GEMINI_API_KEY_26, process.env.GEMINI_API_KEY_27, process.env.GEMINI_API_KEY_28, process.env.GEMINI_API_KEY_29, process.env.GEMINI_API_KEY_30, process.env.GEMINI_API_KEY_31, process.env.GEMINI_API_KEY_32, process.env.GEMINI_API_KEY_33, process.env.GEMINI_API_KEY_34, process.env.GEMINI_API_KEY_35, process.env.GEMINI_API_KEY_36, process.env.GEMINI_API_KEY_37, process.env.GEMINI_API_KEY_38, process.env.GEMINI_API_KEY_39, process.env.GEMINI_API_KEY_40, process.env.GEMINI_API_KEY_41, process.env.GEMINI_API_KEY_42, process.env.GEMINI_API_KEY_43, process.env.GEMINI_API_KEY_44, process.env.GEMINI_API_KEY_45, process.env.GEMINI_API_KEY_46, process.env.GEMINI_API_KEY_47, process.env.GEMINI_API_KEY_48, process.env.GEMINI_API_KEY_49, process.env.GEMINI_API_KEY_50, process.env.GEMINI_API_KEY_51, process.env.GEMINI_API_KEY_52, process.env.GEMINI_API_KEY_53, process.env.GEMINI_API_KEY_54, process.env.GEMINI_API_KEY_55, process.env.GEMINI_API_KEY_56, process.env.GEMINI_API_KEY_57, process.env.GEMINI_API_KEY_58, process.env.GEMINI_API_KEY_59, process.env.GEMINI_API_KEY_60, process.env.GEMINI_API_KEY_61, process.env.GEMINI_API_KEY_62, process.env.GEMINI_API_KEY_63, process.env.GEMINI_API_KEY_64, process.env.GEMINI_API_KEY_65, process.env.GEMINI_API_KEY_66, process.env.GEMINI_API_KEY_67, process.env.GEMINI_API_KEY_68, process.env.GEMINI_API_KEY_69, process.env.GEMINI_API_KEY_70, process.env.GEMINI_API_KEY_71, process.env.GEMINI_API_KEY_72, process.env.GEMINI_API_KEY_73, process.env.GEMINI_API_KEY_74, process.env.GEMINI_API_KEY_75, process.env.GEMINI_API_KEY_76, process.env.GEMINI_API_KEY_77, process.env.GEMINI_API_KEY_78, process.env.GEMINI_API_KEY_79, process.env.GEMINI_API_KEY_80, process.env.GEMINI_API_KEY_81, process.env.GEMINI_API_KEY_82, process.env.GEMINI_API_KEY_83, process.env.GEMINI_API_KEY_84, process.env.GEMINI_API_KEY_85, process.env.GEMINI_API_KEY_86, process.env.GEMINI_API_KEY_87, process.env.GEMINI_API_KEY_88, process.env.GEMINI_API_KEY_89, process.env.GEMINI_API_KEY_90, process.env.GEMINI_API_KEY_91, process.env.GEMINI_API_KEY_92, process.env.GEMINI_API_KEY_93, process.env.GEMINI_API_KEY_94, process.env.GEMINI_API_KEY_95, process.env.GEMINI_API_KEY_96, process.env.GEMINI_API_KEY_97, process.env.GEMINI_API_KEY_98, process.env.GEMINI_API_KEY_99, process.env.GEMINI_API_KEY_100, process.env.GEMINI_API_KEY_101, process.env.GEMINI_API_KEY_102, process.env.GEMINI_API_KEY_103, process.env.GEMINI_API_KEY_104, process.env.GEMINI_API_KEY_105, process.env.GEMINI_API_KEY_106, process.env.GEMINI_API_KEY_107, process.env.GEMINI_API_KEY_108, process.env.GEMINI_API_KEY_109, process.env.GEMINI_API_KEY_110, process.env.GEMINI_API_KEY_111, process.env.GEMINI_API_KEY_112, process.env.GEMINI_API_KEY_113, process.env.GEMINI_API_KEY_114, process.env.GEMINI_API_KEY_115, process.env.GEMINI_API_KEY_116, process.env.GEMINI_API_KEY_117, process.env.GEMINI_API_KEY_118, process.env.GEMINI_API_KEY_119, process.env.GEMINI_API_KEY_120, process.env.GEMINI_API_KEY_121, process.env.GEMINI_API_KEY_122, process.env.GEMINI_API_KEY_123, process.env.GEMINI_API_KEY_124, process.env.GEMINI_API_KEY_125, process.env.GEMINI_API_KEY_126, process.env.GEMINI_API_KEY_127, process.env.GEMINI_API_KEY_128, process.env.GEMINI_API_KEY_129, process.env.GEMINI_API_KEY_130, process.env.GEMINI_API_KEY_131, process.env.GEMINI_API_KEY_132, process.env.GEMINI_API_KEY_133, process.env.GEMINI_API_KEY_134, process.env.GEMINI_API_KEY_135, process.env.GEMINI_API_KEY_136, process.env.GEMINI_API_KEY_137, process.env.GEMINI_API_KEY_138, process.env.GEMINI_API_KEY_139
   ].filter(Boolean)
   const shuffledKeys = [...API_KEYS].sort(() => Math.random() - 0.5)
   
@@ -98,7 +91,7 @@ function extractSubreddits(comments) {
 }
 
 async function generateRoastQuestions(comments, username) {
-  const recentComments = comments.slice(0, 100);
+  const recentComments = comments.slice(0, 150); // Keep limited for questions
   const roastPrompt = `Based on the Reddit posts and comments below, generate exactly two playful or sarcastic yes/no questions about the user's behavior or interests. Each question should come with a separate response for both "yes" and "no" answers.
 
 Make the questions witty, judgmental, or sarcastic like a roasting friend would ask in genz style but don't overdo it. Focus on their behavior, posting style, subreddit choices, recurring phrases, or obvious patterns in their activity. It should be short like a normal message, Keep it entertaining.
@@ -143,307 +136,60 @@ Generate the JSON response:`
   }
 }
 
-async function generateDetailedRoast(comments, username) {
-  const detailedRoastPrompt = `Based on the Reddit posts and comments below, write a detailed roast of the user. Be witty, sarcastic, chaotic, even unhinged if needed. 
+async function generateCombinedRoast(comments, username) {
+    const combinedRoastPrompt = `
+You are an AI assistant. Your task is to analyze the user's Reddit activity provided below and generate a multi-part roast.
+Your response MUST be a single, well-formed JSON object and nothing else. Do not include any text or formatting outside of the JSON object.
 
-You're allowed to use less grammar or slang if it makes it feel more Gen Z or human. Avoid being formal or robotic. Focus on how they post, what they post, their energy, patterns, obsessions, hypocrisy, and weird subreddit choices.
+The JSON object must have the following keys: "detailedRoast", "strengthAnalysis", "weaknessAnalysis", "loveLifeAnalysis", "lifePurposeAnalysis".
 
-Make it sharp, clever, ruthless if needed but still fun. No filters. Just pure roast.
-
-DO NOT USE ANY MARKDOWN FORMATTING. No asterisks, no bold, no italics, no headers, no bullet points. Just plain text.
-Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend.
-
-Here's the Reddit activity to analyze:
+**Reddit Activity to Analyze:**
+\`\`\`json
 ${JSON.stringify(comments)}
+\`\`\`
 
-Generate a detailed roast (strictly around 300 words):`
+Now, generate the content for each key in the JSON object by following these individual prompts EXACTLY as described.
 
-  try {
-    const response = await getGeminiResponse(detailedRoastPrompt, 0, true)
+**1. For the "detailedRoast" key:**
+*   **PROMPT:** Based on the Reddit posts and comments below, write a detailed roast of the user. Be witty, sarcastic, chaotic, even unhinged if needed. You're allowed to use less grammar or slang if it makes it feel more Gen Z or human. Avoid being formal or robotic. Focus on how they post, what they post, their energy, patterns, obsessions, hypocrisy, and weird subreddit choices. Make it sharp, clever, ruthless if needed but still fun. No filters. Just pure roast. Generate a detailed roast (strictly around 400 words).
 
-    await Roast.findOneAndUpdate(
-      { username },
-      { roast: response },
-      { upsert: true, new: true }
-    )
-    
-    return response
-  } catch (error) {
-    console.error('Error generating detailed roast:', error)
-    throw error
-  }
-}
+**2. For the "strengthAnalysis" key:**
+*   **PROMPT:** Based on the Reddit posts and comments below, call out their strengths and good traits—but make it spicy, unfiltered, and borderline feral. Think of it like a roast from someone who lowkey admires the chaos. If they're smart, helpful, funny, weirdly insightful, or just deranged in a productive way, point it out. Don’t be afraid to lean into the madness—if they’re quietly unhinged but effective, say it. If they post like someone who hasn’t slept in 3 days but still makes sense, highlight that. Be sarcastic, be real. Use casual tone, no need for proper grammar, make it feel like a person speaking, not a corporate summary. If they're quietly unhinged but effective, say that too. Be sarcastic and fun. Generate a strength analysis (strictly around 150 words).
 
-async function generateStrengthAnalysis(comments, username) {
-  const strengthPrompt = `Based on the Reddit posts and comments below, point out the user's strengths and good traits. It can be chaotic or funny, but try to keep it real and give some actual insight too. Not in a boring way. Make it spicy, honest, and dark if needed. If they're helpful, smart, funny, weird in a good way, or just consistently based, say it.
+**3. For the "weaknessAnalysis" key:**
+*   **PROMPT:** Based on the Reddit posts and comments below, call out the user's weak spots. Not in a boring way. Make it spicy, honest, and dark if needed. If they overshare, if they post like a fed, if they argue too much, if they simp hard or doomscroll daily, say it. Make it feel like a friend calling them out while still kinda loving the chaos. Use slang, less grammar, TikTok brain energy if needed. Give actual insight too, not just insults. Be sarcastic and fun. Generate a weakness analysis (strictly around 150 words).
 
-Use casual tone, no need for proper grammar, make it feel like a person speaking, not a corporate summary. If they're quietly unhinged but effective, say that too.
+**4. For the "loveLifeAnalysis" key:**
+*   **PROMPT:** Based on the Reddit posts and comments below, make fun, dark, chaotic, or suspicious guesses about this user's love life. Be entertaining. Maybe they overshare, maybe they've never touched grass, maybe they flirt like an NPC. Whatever it is, call it out. Use casual tone, Gen Z energy, less grammar is fine. Make it feel like a weirdly accurate, lowkey disturbing but funny read. But still try to give some insight into how they might be in relationships or what they actually want. Generate a love life analysis (strictly around 150 words).
 
-DO NOT USE ANY MARKDOWN FORMATTING. No asterisks, no bold, no italics, no headers, no bullet points. Just plain text.
-Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend.
+**5. For the "lifePurposeAnalysis" key:**
+*   **PROMPT:** Based on the Reddit posts and comments below, guess what this user's life purpose is or what drives them. Could be something noble, chaotic, or just weird. Be creative and honest. Be dark, sarcastic, or even deranged if it fits. But still try to make it feel like there's some truth or meaning behind whatever they're doing. No need for proper grammar. Make it raw, sarcastic, and like a bored but observant friend guessing their destiny. Generate a life purpose analysis (strictly around 150 words).
 
-Here's the Reddit activity to analyze:
-${JSON.stringify(comments)}
-
-Generate a strength analysis (strictly around 150 words):`
-
-  try {
-    const response = await getGeminiResponse(strengthPrompt, 0, true)
-
-    await Roast.findOneAndUpdate(
-      { username },
-      { strength: response },
-      { upsert: true, new: true }
-    )
-    
-    return response
-  } catch (error) {
-    console.error('Error generating strength analysis:', error)
-    throw error
-  }
-}
-
-async function generateWeaknessAnalysis(comments, username) {
-  const weaknessPrompt = `Based on the Reddit posts and comments below, call out the user's weak spots. Not in a boring way. Make it spicy, honest, and dark if needed. If they overshare, if they post like a fed, if they argue too much, if they simp hard or doomscroll daily, say it.
-
-Make it feel like a friend calling them out while still kinda loving the chaos. Use slang, less grammar, TikTok brain energy if needed.
-
-Give actual insight too, not just insults.
-
-DO NOT USE ANY MARKDOWN FORMATTING. No asterisks, no bold, no italics, no headers, no bullet points. Just plain text.
-Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend.
-
-Here's the Reddit activity to analyze:
-${JSON.stringify(comments)}
-
-Generate a weakness analysis (strictly around 150 words):`
-
-  try {
-    const response = await getGeminiResponse(weaknessPrompt, 0, true)
-    
-    await Roast.findOneAndUpdate(
-      { username },
-      { weakness: response },
-      { upsert: true, new: true }
-    )
-    
-    return response
-  } catch (error) {
-    console.error('Error generating weakness analysis:', error)
-    throw error
-  }
-}
-
-async function generateLoveLifeAnalysis(comments, username) {
-  const loveLifePrompt = `Based on the Reddit posts and comments below, make fun, dark, chaotic, or suspicious guesses about this user's love life. Be entertaining. Maybe they overshare, maybe they've never touched grass, maybe they flirt like an NPC. Whatever it is, call it out.
-
-Use casual tone, Gen Z energy, less grammar is fine. Make it feel like a weirdly accurate, lowkey disturbing but funny read.
-
-But still try to give some insight into how they might be in relationships or what they actually want.
-
-DO NOT USE ANY MARKDOWN FORMATTING. No asterisks, no bold, no italics, no headers, no bullet points. Just plain text.
-Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend.
-
-Here's the Reddit activity to analyze:
-${JSON.stringify(comments)}
-
-Generate a love life analysis (strictly around 150 words):`
-
-  try {
-    const response = await getGeminiResponse(loveLifePrompt, 0, true)
-    
-    await Roast.findOneAndUpdate(
-      { username },
-      { loveLife: response },
-      { upsert: true, new: true }
-    )
-    
-    return response
-  } catch (error) {
-    console.error('Error generating love life analysis:', error)
-    throw error
-  }
-}
-
-async function generateLifePurposeAnalysis(comments, username) {
-  const lifePurposePrompt = `Based on the Reddit posts and comments below, guess what this user's life purpose is or what drives them. Could be something noble, chaotic, or just weird. Be creative and honest.
-
-Be dark, sarcastic, or even deranged if it fits. But still try to make it feel like there's some truth or meaning behind whatever they're doing.
-
-No need for proper grammar. Make it raw, sarcastic, and like a bored but observant friend guessing their destiny.
-
-DO NOT USE ANY MARKDOWN FORMATTING. No asterisks, no bold, no italics, no headers, no bullet points. Just plain text.
-Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend.
-
-Here's the Reddit activity to analyze:
-${JSON.stringify(comments)}
-
-Generate a life purpose analysis (strictly around 150 words):`
-
-  try {
-    const response = await getGeminiResponse(lifePurposePrompt, 0, true)
-
-    await Roast.findOneAndUpdate(
-      { username },
-      { lifePurpose: response },
-      { upsert: true, new: true }
-    )
-    
-    return response
-  } catch (error) {
-    console.error('Error generating life purpose analysis:', error)
-    throw error
-  }
-}
-
-async function fetchRedditComments(username, maxComments = 250) {
-  const comments = [];
-  let after = null;
-  let currentAttempts = 0;
-  const maxAttempts = 8;
-
-  while (currentAttempts < maxAttempts && comments.length < maxComments) {
-    currentAttempts++;
+**Universal Rule:**
+For all generated text values in the JSON object: DO NOT USE ANY MARKDOWN FORMATTING. This means no asterisks, no bolding, no italics, no headers, and no bullet points. All responses must be plain text. Sometimes the context won't be fully visible from the comment so you can make things up, but don't just assume anything based off just one (sometimes people say things that need more context or in a fun way, or they might be trolling), You are allowed to use swear words but not directly towards the user. Start directly with the roast do not write any intro like "Alright", "Okay", or "Here's the roast" etc. Do not refer to the user by any name or even as user, It should be like a friend talking to another friend. Your goal should be to roast them but not make them feel bad.
+`;
 
     try {
-      let url = `https://old.reddit.com/user/${username}/comments/.json?limit=100`;
-      if (after) {
-        url += `&after=${after}`;
-      }
+        const response = await getGeminiResponse(combinedRoastPrompt, 0, true);
+        const cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '');
+        const parsedResponse = JSON.parse(cleanedResponse);
 
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Linux; Android 5.1.1; SM-J3109 Build/LMY47X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36'
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 404) {
-          throw new Error('User not found');
-        }
-        throw new Error(`Reddit API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (!data || !data.data || !data.data.children || !Array.isArray(data.data.children)) {
-        throw new Error('User not found or invalid response');
-      }
-
-      const children = data.data.children;
-
-      if (children.length === 0) {
-        if (currentAttempts === 1 && comments.length === 0) {
-          throw new Error('No comments found for this user');
-        }
-        break;
-      }
-
-      let newCommentsCount = 0;
-      for (const item of children) {
-        const commentData = item.data;
-        if (commentData.body && 
-            commentData.body !== '[deleted]' && 
-            commentData.body !== '[removed]' &&
-            commentData.body.trim() !== '') {
-
-          const isDuplicate = comments.some(c => c.body === commentData.body);
-          if (!isDuplicate) {
-            let extractedPath = '';
-            try {
-              const permalink = `https://reddit.com${commentData.permalink}`;
-              const match = permalink.match(/\/r\/([^\/]+\/comments\/[^\/]+\/[^\/]+)\//);
-              extractedPath = match ? match[1] : commentData.permalink;
-            } catch (error) {
-              extractedPath = commentData.permalink;
-            }
-
-            comments.push({
-              body: commentData.body,
-              upvotes: commentData.score,
-              permalink: extractedPath,
-            });
-            newCommentsCount++;
-          }
-
-          if (comments.length >= maxComments) {
-            return comments;
-          }
-        }
-      }
-
-      const newAfter = data?.data?.after;
-      
-      if (!newAfter || newAfter === after) {
-        break;
-      }
-
-      after = newAfter;
-
-      if (newCommentsCount === 0) {
-        break;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-    } catch (error) {
-      if (error.message.includes('User not found') || error.message.includes('No comments found')) {
-        throw error;
-      }
-      console.error(`Attempt ${currentAttempts} failed:`, error.message);
-      if (currentAttempts >= maxAttempts) {
-        throw new Error('Failed to fetch comments after multiple attempts');
-      }
-    }
-  }
-
-  return comments;
-}
-
-async function fetchUserProfile(username) {
-  try {
-    const response = await fetch(`https://old.reddit.com/user/${username}/about.json`, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 5.1.1; SM-J3109 Build/LMY47X) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Mobile Safari/537.36'
-      }
-    });
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        throw new Error('User not found. Please try with a different username.');
-      }
-      throw new Error(`Failed to fetch user profile: ${response.status}`);
-    }
-
-    const data = await response.json();
+    await Roast.findOneAndUpdate(
+      { username },
+            { 
+                roast: parsedResponse.detailedRoast,
+                strength: parsedResponse.strengthAnalysis,
+                weakness: parsedResponse.weaknessAnalysis,
+                loveLife: parsedResponse.loveLifeAnalysis,
+                lifePurpose: parsedResponse.lifePurposeAnalysis,
+            },
+      { upsert: true, new: true }
+        );
     
-    if (!data || !data.data || data.error) {
-      throw new Error('User not found. Please try with a different username.');
-    }
-
-    if (data?.data?.subreddit) {
-      const profile = data.data.subreddit;
-      let avatar = profile.icon_img || profile.community_icon || null;
-
-      if (avatar && !avatar.includes('i.redd.it')) {
-        avatar = 'https://www.redditstatic.com/avatars/avatar_default_01_FF4500.png';
-      }
-      
-      return {
-        name: profile.display_name_prefixed || profile.display_name || null,
-        avatar: avatar
-      };
-    } else {
-      throw new Error('User not found. Please try with a different username.');
-    }
+        return parsedResponse;
   } catch (error) {
-    console.error('Profile fetch error:', error);
-
-    if (error.message.includes('User not found')) {
-      throw error;
-    }
-    
-    throw new Error('User not found. Please try with a different username.');
+        console.error('Error generating combined roast:', error);
+        throw error;
   }
 }
 
@@ -475,7 +221,7 @@ router.post('/', limiter, async (c) => {
       }
 
       const userProfile = await fetchUserProfile(cleanUsername);
-      const comments = await fetchRedditComments(cleanUsername, 250);
+      const comments = await fetchRedditComments(cleanUsername, 500);
 
       if (comments.length === 0) {
         return c.json({
@@ -504,29 +250,28 @@ router.post('/', limiter, async (c) => {
         console.error('Error updating basic data in MongoDB:', dbError)
       }
 
-      const [questionsResult, ...otherResults] = await Promise.allSettled([
-        generateRoastQuestions(comments, cleanUsername),
-        generateDetailedRoast(comments, cleanUsername),
-        generateStrengthAnalysis(comments, cleanUsername),
-        generateWeaknessAnalysis(comments, cleanUsername),
-        generateLoveLifeAnalysis(comments, cleanUsername),
-        generateLifePurposeAnalysis(comments, cleanUsername)
-      ])
+      try {
 
-      if (questionsResult.status === 'rejected') {
-        console.error('Error generating questions:', questionsResult.reason)
+        generateCombinedRoast(comments, cleanUsername).catch(error => {
+          console.error('Background roast generation failed:', error);
+        });
+        
+        await generateRoastQuestions(comments, cleanUsername);
+
+        return c.json({
+          success: true,
+          redirect: false,
+          message: 'Questions generated successfully, roast analysis generating in background',
+        }, 200);
+
+      } catch (questionsError) {
+        console.error('Error generating questions:', questionsError);
         return c.json({
           success: false,
           message: 'Failed to generate roast questions',
-          error: questionsResult.reason.message
-        }, 500)
+          error: questionsError.message
+        }, 500);
       }
-
-      return c.json({
-        success: true,
-        redirect: false,
-        message: 'Roast questions generated successfully, other analyses completed',
-      }, 200)
 
     } catch (redditError) {
       console.error('Reddit fetch error:', redditError)

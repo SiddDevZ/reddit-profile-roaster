@@ -34,6 +34,7 @@ export default function RoastPage() {
   const [isTyping, setIsTyping] = useState(false);
   const [userData, setUserData] = useState(null);
   const [showRoastResults, setShowRoastResults] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
 
   const [aiSummaries, setAiSummaries] = useState({
     detailedRoast: null,
@@ -57,64 +58,111 @@ export default function RoastPage() {
   ];
 
   useEffect(() => {
-    const fetchRoastData = async () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const username = urlParams.get('user');
+    let intervalId = null;
 
-      if (!username) {
-        setError('No username provided in URL');
-        setLoading(false);
-        return;
-      }
+    const initialFetch = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('user');
 
-      try {
-        const response = await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}`);
-        const data = await response.json();
-
-        if (!data.success) {
-          throw new Error(data.message || 'Failed to fetch roast data.');
+        if (!username) {
+            setError('No username provided in URL');
+            setLoading(false);
+            return;
         }
 
-        if (data.type === 'questions') {
-          const parsedQuestions = parseQuestions(data.data.questions);
+        const handleSummaries = (summariesData) => {
+            setUserData({
+                username: summariesData.username,
+                avatar: summariesData.avatar,
+                subreddits: summariesData.subreddits,
+            });
 
-          if (!parsedQuestions) {
-            throw new Error('Failed to parse roast questions.');
-          }
+            setAiSummaries(prevSummaries => {
+                const newSummaries = { ...prevSummaries };
+                let hasChanged = false;
+                Object.keys(newSummaries).forEach(key => {
+                    if (summariesData.aiSummaries[key] && !prevSummaries[key]) {
+                        newSummaries[key] = summariesData.aiSummaries[key];
+                        hasChanged = true;
+                    }
+                });
+                return hasChanged ? newSummaries : prevSummaries;
+            });
 
-          setUserData({ username: data.data.username, avatar: data.data.avatar });
-          setRoastData(parsedQuestions);
-          setLoading(false);
-          startChatSequence(parsedQuestions);
+            setAiSummariesComplete(prevComplete => {
+                const newComplete = { ...prevComplete };
+                let hasChanged = false;
+                Object.keys(newComplete).forEach(key => {
+                    const isComplete = !!summariesData.aiSummaries[key];
+                    if (isComplete && !prevComplete[key]) {
+                        newComplete[key] = true;
+                        hasChanged = true;
+                    }
+                });
+                return hasChanged ? newComplete : prevComplete;
+            });
 
-        } else if (data.type === 'summaries') {
-          setUserData({
-            username: data.data.username,
-            avatar: data.data.avatar,
-            subreddits: data.data.subreddits
-          });
-          setAiSummaries(data.data.aiSummaries);
-          setAiSummariesComplete({
-            detailedRoast: !!data.data.aiSummaries.detailedRoast,
-            strengthAnalysis: !!data.data.aiSummaries.strengthAnalysis,
-            weaknessAnalysis: !!data.data.aiSummaries.weaknessAnalysis,
-            loveLifeAnalysis: !!data.data.aiSummaries.loveLifeAnalysis,
-            lifePurposeAnalysis: !!data.data.aiSummaries.lifePurposeAnalysis
-          });
-          setShowRoastResults(true);
-          setLoading(false);
-          window.scrollTo(0, 0);
+            return Object.values(summariesData.aiSummaries).every(summary => !!summary);
+        };
+
+        try {
+            const response = await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}`);
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to fetch roast data.');
+            }
+
+            if (data.type === 'questions') {
+                const parsedQuestions = parseQuestions(data.data.questions);
+                if (!parsedQuestions) throw new Error('Failed to parse roast questions.');
+                
+                setUserData({ username: data.data.username, avatar: data.data.avatar });
+                setRoastData(parsedQuestions);
+                setLoading(false);
+                startChatSequence(parsedQuestions);
+            } else if (data.type === 'summaries') {
+                setShowRoastResults(true);
+                setLoading(false);
+                window.scrollTo(0, 0);
+
+                const allComplete = handleSummaries(data.data);
+
+                if (!allComplete) {
+                    intervalId = setInterval(async () => {
+                        try {
+                            const pollResponse = await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}`);
+                            const pollData = await pollResponse.json();
+
+                            if (pollData.success && pollData.type === 'summaries') {
+                                if (handleSummaries(pollData.data)) {
+                                    clearInterval(intervalId);
+                                }
+                            } else if (!pollData.success) {
+                                clearInterval(intervalId);
+                            }
+                        } catch (pollErr) {
+                            console.error('Polling error:', pollErr);
+                            clearInterval(intervalId);
+                        }
+                    }, 1000);
+                }
+            }
+        } catch (err) {
+            console.error('Error fetching roast data:', err);
+            setError(err.message || 'An unknown error occurred.');
+            setLoading(false);
         }
-
-      } catch (err) {
-        console.error('Error fetching roast data:', err);
-        setError(err.message || 'An unknown error occurred.');
-        setLoading(false);
-      }
     };
 
-    fetchRoastData();
-  }, []);
+    initialFetch();
+
+    return () => {
+        if (intervalId) {
+            clearInterval(intervalId);
+        }
+    };
+}, []);
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -246,6 +294,37 @@ export default function RoastPage() {
     }
   };
 
+  const handleRegenerate = async () => {
+    if (isRegenerating) return;
+    
+    setIsRegenerating(true);
+    
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const username = urlParams.get('user');
+      
+      if (!username) {
+        throw new Error('No username found');
+      }
+
+      const response = await fetch(`${config.url}/api/roast/${encodeURIComponent(username)}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.message || 'Failed to delete roast');
+      }
+
+      window.location.href = `/?regenerate=${encodeURIComponent(username)}`;
+      
+    } catch (error) {
+      console.error('Error regenerating roast:', error);
+      setIsRegenerating(false);
+    }
+  };
+
   const RoastCard = ({ title, content, emoji, isLoading, className = "" }) => (
     <div className={`bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 shadow-xs transition-all duration-300 ${className}`}>
       <div className="flex items-center space-x-2.5 mb-3">
@@ -254,9 +333,9 @@ export default function RoastPage() {
       </div>
       {isLoading ? (
         <div className="space-y-3">
-          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-5/6"></div>
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-4/6"></div>
+          <div className="h-4 bg-gray-200 rounded"></div>
+          <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+          <div className="h-4 bg-gray-200 rounded w-4/6"></div>
         </div>
       ) : (
         <p className="font-pop text-black/80 leading-relaxed">{content}</p>
@@ -356,9 +435,9 @@ export default function RoastPage() {
       )}
 
       {showRoastResults && (
-        <div className="min-h-screen p-4 sm:p-6 lg:p-8">
+        <div className="min-h-screen py-8 px-4 sm:p-6 lg:p-8">
           <div className="max-w-6xl mx-auto">
-            <div className="text-center mb-12">
+            <div className="text-center mb-8">
               <h1 className="font-merri text-4xl sm:text-5xl font-light text-black mb-2 tracking-tight">
                 Your Roast
               </h1>
@@ -367,7 +446,49 @@ export default function RoastPage() {
               </p>
             </div>
 
-            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-sm mb-8">
+            <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+              <div 
+                onClick={() => window.location.href = '/'}
+                className="flex items-center space-x-2 text-black/70 hover:text-black transition-colors cursor-pointer group"
+              >
+                <svg 
+                  className="w-4 h-4 transition-transform duration-250 group-hover:-translate-x-0.5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="font-pop text-sm font-medium">Back to Home</span>
+              </div>
+
+              <div 
+                onClick={handleRegenerate}
+                className={`flex items-center space-x-2 transition-colors cursor-pointer group ${
+                  isRegenerating 
+                    ? 'text-black/40 cursor-not-allowed' 
+                    : 'text-black/70 hover:text-black'
+                }`}
+              >
+                <svg 
+                  className={`w-4 h-4 transition-transform duration-400 ${
+                    isRegenerating 
+                      ? 'animate-spin' 
+                      : 'group-hover:rotate-180'
+                  }`}
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span className="font-pop text-sm font-medium">
+                  {isRegenerating ? 'Regenerating...' : 'Regenerate'}
+                </span>
+              </div>
+            </div>
+
+            <div className="bg-white/80 backdrop-blur-sm border border-gray-200 rounded-2xl p-6 sm:p-8 shadow-xs mb-8">
               <div className="flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-6">
 
                 <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center overflow-hidden">
@@ -389,11 +510,12 @@ export default function RoastPage() {
                     )}
                   </h2>
 
-                  <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-4">
+                  <div className="flex cursor-pointer flex-wrap justify-center sm:justify-start gap-2 mt-4">
                     {userData?.subreddits ? userData.subreddits.map((sub, index) => (
                       <span 
                         key={index}
-                        className="bg-black/5 text-black/70 px-3 py-1 rounded-full text-sm font-pop"
+                        onClick={() => window.open(`https://www.reddit.com/r/${userData?.subreddits[index].name}`, '_blank', 'noopener,noreferrer')} 
+                        className="bg-black/5 text-black/70 hover:bg-black/6 transition-all duration-300 px-3 py-1 rounded-full text-sm font-pop"
                       >
                         r/{sub.name} ({sub.percentage}%)
                       </span>
@@ -454,16 +576,8 @@ export default function RoastPage() {
               </div>
             </div>
 
-            <div className="text-center opacity-0 mb-8">
-              <button 
-                onClick={() => window.location.href = '/'}
-                className="bg-black text-white px-8 py-3 rounded-2xl font-pop font-medium cursor-pointer transition-all duration-300"
-              >
-                Roast Another Profile
-              </button>
-            </div>
           </div>
-          <div className='opacity-[97.5%]'>
+          <div className='opacity-[97.5%] mt-14'>
             <Footer />
           </div>
         </div>

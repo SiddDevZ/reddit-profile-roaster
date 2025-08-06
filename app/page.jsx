@@ -7,8 +7,10 @@ import UsernameForm from "@/components/UsernameForm";
 import { Particles } from "@/components/magicui/particles";
 import Footer from "@/components/Footer";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
+import ThemeToggle from "@/components/ThemeToggle";
 import ClientLayout from "@/components/ClientLayout";
 import { Toaster, toast } from "sonner";
+import config from '../config.json';
 
 function PageContent() {
   const { t } = useTranslation();
@@ -54,6 +56,50 @@ function PageContent() {
       setIsTrainingComplete(false);
       setIsStuck(false);
     };
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const regenerateUsername = urlParams.get('regenerate');
+    
+    if (regenerateUsername) {
+      window.history.replaceState({}, document.title, '/');
+      
+      handleFormSubmit();
+
+      setTimeout(async () => {
+        try {
+          const response = await fetch(`${config.url}/api/responses`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ 
+              username: regenerateUsername
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`API request failed with status ${response.status}`);
+          }
+
+          const apiResponse = await response.json();
+          
+          if (apiResponse.success) {
+            setTimeout(() => {
+              if (apiResponse.redirect) {
+                window.location.href = `/roast?user=${encodeURIComponent(apiResponse.username)}`;
+              } else {
+                window.location.href = `/roast?user=${encodeURIComponent(regenerateUsername)}`;
+              }
+            }, 100);
+          } else {
+            throw new Error(apiResponse.message || 'Failed to regenerate roast');
+          }
+        } catch (error) {
+          console.error('Error during regenerate:', error);
+          handleRoastError();
+        }
+      }, 1000);
+    }
 
     window.addEventListener('roastComplete', handleRoastComplete);
     window.addEventListener('roastError', handleRoastError);
@@ -121,23 +167,21 @@ function PageContent() {
   const startFinalization = () => {
     const duration = 15600; // 30% slower (12000 * 1.3)
     const startTime = Date.now();
-    let speedMultiplier = 1;
     let lastShouldRedirect = false;
     let isFinishing = false;
     let finishStartTime = 0;
-    let isStuckAt90 = false;
-
+    
     const isResponseReceived = () => {
-      return localStorage.getItem('roastData') !== null;
+      return localStorage.getItem('roastData') !== null || shouldRedirect;
     };
     
     const updateProgress = () => {
-      const responseReceived = isResponseReceived() || shouldRedirect;
+      const responseReceived = isResponseReceived();
 
-      if (responseReceived && !lastShouldRedirect) {
-        lastShouldRedirect = true;
+      if (responseReceived && !isFinishing) {
         isFinishing = true;
         finishStartTime = Date.now();
+        setIsStuck(false);
       }
       
       let progress;
@@ -149,26 +193,16 @@ function PageContent() {
         const currentProgress = finalizationProgress / 100;
 
         const t = Math.min(finishElapsed / finishDuration, 1);
-        const easeOutQuad = t * (2 - t); // Ease out quadratic formula
+        const easeOutQuad = t * (2 - t);
 
         progress = currentProgress + (1 - currentProgress) * easeOutQuad;
       } else {
         const elapsed = Date.now() - startTime;
-        let adjustedElapsed = elapsed * speedMultiplier;
-        progress = Math.min(adjustedElapsed / duration, 1);
+        progress = Math.min(elapsed / duration, 1);
 
-        if (progress >= 0.5 && !responseReceived) {
-          if (progress < 0.9) {
-            const slowZoneStart = 0.5;
-            const slowZoneEnd = 0.9;
-            const slowZoneProgress = (progress - slowZoneStart) / (slowZoneEnd - slowZoneStart);
-
-            const slowMultiplier = 0.3;
-            const adjustedSlowProgress = slowZoneProgress * slowMultiplier;
-            progress = slowZoneStart + adjustedSlowProgress * (slowZoneEnd - slowZoneStart);
-          } else if (progress >= 0.9 && !isStuckAt90) {
-            progress = 0.9;
-            isStuckAt90 = true;
+        if (progress >= 0.9) {
+          progress = 0.9;
+          if (!isStuck) {
             setIsStuck(true);
           }
         }
@@ -176,17 +210,9 @@ function PageContent() {
 
       setFinalizationProgress(Math.floor(progress * 100));
       
-      if (progress >= 1) {
-        if (!responseReceived && !hasApiError) {
-          setIsStuck(true);
-          return;
-        }
-        return;
-      }
-      
-      if (progress < 1 && !(isStuckAt90 && !responseReceived)) {
-        const updateInterval = isFinishing ? 16 : (speedMultiplier > 1 ? 20 : 50);
-        setTimeout(updateProgress, updateInterval);
+      if (progress < 1) {
+        const interval = isFinishing ? 16 : 100;
+        setTimeout(updateProgress, interval);
       }
     };
     
@@ -211,12 +237,42 @@ function PageContent() {
     }
   }, [hasApiError]);
 
+  const warningBox = (
+    <div className="backdrop-blur-3xl opacity-90">
+      <div className="bg-black/3 border border-[#dadada] text-black/80 text-sm sm:text-base font-mono px-4 py-3 rounded-lg shadow-lg shadow-black/4">
+        <div className="flex items-end space-x-2 mb-2">
+          <Terminal className="w-4 h-4 text-black/70" />
+          <span className="text-xs tracking-wider font-medium unselectable">
+            {t("warning.title")}
+          </span>
+        </div>
+        <div className="h-px bg-black/20 mb-2"></div>
+        <p className="text-xs sm:text-sm font-mono unselectable leading-relaxed">
+          {t("warning.message")}
+        </p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="relative min-h-screen overflow-hidden">
       <Toaster theme="light" position="bottom-right" richColors />
-      <div className="fixed top-4 sm:block hidden left-4 z-50">
-        <LanguageSwitcher />
-      </div>
+      
+      {!showLoadingPage && (
+        <div className="fixed top-4 left-4 right-4 z-50">
+          <div className="sm:hidden flex justify-between items-start space-x-4">
+            {/* <ThemeToggle /> */}
+            {warningBox}
+          </div>
+          <div className="hidden sm:flex justify-between items-start">
+            <div className="flex items-center space-x-3">
+              <LanguageSwitcher />
+              {/* <ThemeToggle /> */}
+            </div>
+            <div className="max-w-md">{warningBox}</div>
+          </div>
+        </div>
+      )}
 
       <div
         className={`relative min-h-screen flex flex-col transition-transform duration-500 ease-in-out ${
@@ -224,22 +280,7 @@ function PageContent() {
         }`}
       >
         <div className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8">
-          <div className="absolute top-4 backdrop-blur-3xl ml-4 right-4 opacity-90 max-w-md">
-            <div className="bg-black/3 border border-[#dadada] text-black/80 text-sm sm:text-base font-mono px-4 py-3 rounded-lg shadow-lg shadow-black/4">
-              <div className="flex items-end space-x-2 mb-2">
-                <Terminal className="w-4 h-4 text-black/70" />
-                <span className="text-xs tracking-wider font-medium unselectable">
-                  {t("warning.title")}
-                </span>
-              </div>
-              <div className="h-px bg-black/20 mb-2"></div>
-              <p className="text-xs sm:text-sm font-mono unselectable leading-relaxed">
-                {t("warning.message")}
-              </p>
-            </div>
-          </div>
-
-          <div className="max-w-2xl mb-24 mt-10 sm:mb-0 sm:mt-0 w-full text-center">
+          <div className="max-w-2xl mb-24 mt-32 sm:mt-24 w-full text-center">
             <h1 className="font-merri text-[2.6rem] unselectable sm:text-6xl md:text-7xl lg:text-7xl font-light tracking-tight text-black mb-4 sm:mb-5 leading-[1.09]">
               {t("title")}
             </h1>
@@ -290,8 +331,8 @@ function PageContent() {
                       ? "bg-green-500 shadow-sm shadow-green-500/50" 
                       : "bg-gray-300 animate-pulse"
                   }`}></div>
-                  <span className="text-black/80 font-medium">
-                    {loadingStep >= 0 && isInitialized ? "✓" : "●"} Extracting behavioral data from your Reddit footprint...
+                  <span className="text-black/80 ml-1 font-medium">
+                     Extracting behavioral data from your Reddit footprint...
                   </span>
                 </div>
               </div>
@@ -307,8 +348,8 @@ function PageContent() {
                       ? "bg-green-500 shadow-sm shadow-green-500/50" 
                       : "bg-orange-500 animate-pulse shadow-sm shadow-orange-500/50"
                   }`}></div>
-                  <span className="text-black/80 font-medium">
-                    {isTrainingComplete ? "✓" : "●"} Training on {trainingCount.toLocaleString()} behavioral patterns...
+                  <span className="text-black/80 ml-1 font-medium">
+                     Training on {trainingCount.toLocaleString()} behavioral patterns...
                   </span>
                 </div>
 
@@ -349,8 +390,8 @@ function PageContent() {
                       ? "bg-green-500 shadow-sm shadow-green-500/50" 
                       : "bg-blue-500 animate-pulse shadow-sm shadow-blue-500/50"
                   }`}></div>
-                  <span className="text-black/80 font-medium">
-                    {finalizationProgress >= 100 ? "✓" : "●"} Generating personalized roast...
+                  <span className="text-black/80 ml-1 font-medium">
+                     Generating personalized roast...
                   </span>
                 </div>
 

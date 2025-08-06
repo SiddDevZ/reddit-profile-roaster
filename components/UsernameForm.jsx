@@ -46,11 +46,11 @@ export default function UsernameForm({ onSubmitComplete }) {
     if (username.trim() && !isLoading) {
       setIsLoading(true);
       
+      const loadingTimeout = setTimeout(() => {
+        onSubmitComplete?.();
+      }, 2500);
+      
       try {
-        setTimeout(() => {
-          onSubmitComplete?.();
-        }, 2500);
-
         const apiResponse = await sendToAPI(username.trim());
 
         if (apiResponse.success) {
@@ -68,12 +68,14 @@ export default function UsernameForm({ onSubmitComplete }) {
             window.dispatchEvent(new CustomEvent('resetHomepage'));
           }, 1000);
         } else {
+          clearTimeout(loadingTimeout);
           toast.error(apiResponse.message || 'An unknown error occurred.');
           setIsLoading(false);
           window.dispatchEvent(new CustomEvent('roastError'));
         }
         
       } catch (error) {
+        clearTimeout(loadingTimeout);
         console.error('Error during process:', error);
 
         if (error.message === 'USER_NOT_FOUND') {
@@ -91,9 +93,9 @@ export default function UsernameForm({ onSubmitComplete }) {
   return (
     <div className="relative">
       <form onSubmit={handleSubmit}>
-        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-2xl mx-auto px-2 sm:px-0 sm:h-[52px]">
-          <div className="flex-1 border-[#626262] border-2 backdrop-blur-3xl rounded-sm relative hover:border-[#3c3c3c] focus-within:border-[#0a0a0a] transition-all duration-300 ease-in-out h-full">
-            <span className="absolute left-4 sm:left-6 top-1/2 transform -translate-y-1/2 text-base sm:text-lg font-pop text-black/60 pointer-events-none">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 max-w-2xl mx-auto px-2 sm:px-0 sm:h-[56px]">
+          <div className="flex-1 bg-white/70 backdrop-blur-xl border-2 border-[#8f8f8f] rounded-xl relative hover:border-[#5e5e5e] focus-within:border-[#242424] focus-within:bg-white/90 transition-all duration-300 ease-in-out h-full group">
+            <span className="absolute left-4 sm:left-6 top-1/2 transform -translate-y-1/2 text-base sm:text-lg font-merri text-black/70 pointer-events-none group-focus-within:text-black/70 transition-colors duration-200">
               u/
             </span>
             <input
@@ -102,7 +104,7 @@ export default function UsernameForm({ onSubmitComplete }) {
               onChange={(e) => setUsername(e.target.value)}
               placeholder={t('usernameForm.placeholder')}
               disabled={isLoading}
-              className="w-full bg-white/50 outline-none text-lg sm:text-xl font-pop text-black placeholder-black/50 py-3 sm:py-[11px] pl-[2.33rem] sm:pl-12 pr-4 sm:pr-6 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-transparent outline-none text-lg sm:text-xl font-merri text-black placeholder-black/50 py-3 sm:py-[13px] pl-[2.33rem] sm:pl-12 pr-4 sm:pr-6 rounded-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
             />
           </div>
           <ConfettiButton
