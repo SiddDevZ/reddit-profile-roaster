@@ -139,7 +139,7 @@ Generate the JSON response:`
 async function generateCombinedRoast(comments, username) {
     const combinedRoastPrompt = `
 You are an AI assistant. Your task is to analyze the user's Reddit activity provided below and generate a multi-part roast.
-Your response MUST be a single, well-formed JSON object and nothing else. Do not include any text or formatting outside of the JSON object.
+Your response MUST be a single, well-formed JSON object and nothing else. Do not include any text, markdown, or formatting outside of the JSON object. It is critical that all property names (keys) are enclosed in double quotes.
 
 The JSON object must have the following keys: "detailedRoast", "strengthAnalysis", "weaknessAnalysis", "loveLifeAnalysis", "lifePurposeAnalysis".
 
@@ -171,11 +171,15 @@ For all generated text values in the JSON object: DO NOT USE ANY MARKDOWN FORMAT
 
     try {
         const response = await getGeminiResponse(combinedRoastPrompt, 0, true);
-        const cleanedResponse = response.replace(/```json/g, '').replace(/```/g, '');
-        const parsedResponse = JSON.parse(cleanedResponse);
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+            throw new Error("No valid JSON object found in the AI response.");
+        }
+        const jsonString = jsonMatch[0];
+        const parsedResponse = JSON.parse(jsonString);
 
-    await Roast.findOneAndUpdate(
-      { username },
+        await Roast.findOneAndUpdate(
+            { username },
             { 
                 roast: parsedResponse.detailedRoast,
                 strength: parsedResponse.strengthAnalysis,
@@ -183,14 +187,14 @@ For all generated text values in the JSON object: DO NOT USE ANY MARKDOWN FORMAT
                 loveLife: parsedResponse.loveLifeAnalysis,
                 lifePurpose: parsedResponse.lifePurposeAnalysis,
             },
-      { upsert: true, new: true }
+            { upsert: true, new: true }
         );
     
         return parsedResponse;
-  } catch (error) {
+    } catch (error) {
         console.error('Error generating combined roast:', error);
         throw error;
-  }
+    }
 }
 
 router.post('/', limiter, async (c) => {

@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import config from '../../config.json';
 import Footer from '@/components/Footer';
+import { Toaster, toast } from "sonner";
 
 const parseQuestions = (rawQuestions) => {
   try {
@@ -163,6 +164,27 @@ export default function RoastPage() {
         }
     };
 }, []);
+
+  useEffect(() => {
+    let roastToastId = null;
+
+    if (showRoastResults) {
+        const allComplete = Object.values(aiSummariesComplete).every(status => status);
+        if (!allComplete) {
+            roastToastId = toast.loading('Hold on tight! Your roast is being generated, this should take 5-10 seconds.', {
+                duration: Infinity 
+            });
+        } else {
+            toast.dismiss();
+        }
+    }
+
+    return () => {
+        if (roastToastId) {
+            toast.dismiss(roastToastId);
+        }
+    };
+  }, [showRoastResults, aiSummariesComplete]);
 
   useEffect(() => {
     const scrollToBottom = () => {
@@ -373,6 +395,7 @@ export default function RoastPage() {
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-white to-gray-50 overflow-hidden">
+      <Toaster theme="light" position="bottom-right" richColors />
       {!showRoastResults && (
         <div className="relative">
           <div className="min-h-screen p-4">
