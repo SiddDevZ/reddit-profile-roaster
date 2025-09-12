@@ -35,7 +35,7 @@ async function getGeminiResponse(prompt, retryCount = 0, useProModel = false) {
     "Content-Type": "application/json"
   }
   
-  const modelName = useProModel ? "gemini-2.5-pro" : "gemini-2.5-flash"
+  const modelName = useProModel ? "gemini-2.5-flash" : "gemini-2.5-flash"
   
   for (let i = 0; i < shuffledKeys.length; i++) {
     const apiKey = shuffledKeys[i]
